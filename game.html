@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+	<meta content="utf-8" http-equiv="encoding">
+	<title>Breakout Game</title>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<script>
+var ballX = 75;
+var ballY = 100;
+var ballSpeedX = 5;
+var ballSpeedY = 5;
+
+const PADDLEWIDTH = 82;
+const PADDLETHICKNESS = 12;
+const PADDLEEDGE = 60;
+
+const BRICKW = 80;
+const BRICKH = 20;
+const BRICKGAP = 2;
+const BRICKCOL = 10;
+const BRICKROWS	= 14;
+
+var bricksLeft = 0;
+var triesLeft = 5;
+
+var paddleX = 400;
+var brickGrid = new Array(BRICKCOL * BRICKROWS);
+
+var canvas, canvasContext;
+window.onload = function() {
+	canvas = document.getElementById("gameCanvas");
+	canvasContext = canvas.getContext("2d");
+
+	var FPS = 30;
+	setInterval(updateAll, 1000/FPS);
+	
+	canvas.addEventListener("mousemove", updateMousePos);
+
+	brickReset();
+	ballReset();
+}
+function updateMousePos(evt) {
+	var rect = canvas.getBoundingClientRect();
+	var root = document.documentElement;
+
+	var mouseX = evt.clientX - rect.left - root.scrollLeft;
+	// var mouseY = evt.clientY -rect.left - root.scrollRight;
+
+	paddleX = mouseX - PADDLEWIDTH/2;
+}
+
+function brickReset() {
+	bricksLeft = 0;
+	var i;
+	for (i = 0; i < 3 * BRICKCOL; i++) {
+		brickGrid[i] = false;
+	}
+	for (;i < BRICKCOL * BRICKROWS; i++) {
+		brickGrid[i] = true;
+		bricksLeft++;
+	}
+}
+function updateAll() {
+	moveAll();
+	drawAll();
+}
+function ballReset() {
+	ballX = canvas.width/2;
+	ballY = canvas.height/2;
+}
+
+function moveBall() {
+	ballX += ballSpeedX;
+	ballY += ballSpeedY;
+
+	if ((ballX < 0 && ballSpeedX < 0.0) || 
+		(ballX > canvas.width && ballSpeedX > 0.0)) {
+		ballSpeedX = -ballSpeedX;
+	}
+	if (ballY < 0 && ballSpeedY < 0.0) {
+		ballSpeedY = -ballSpeedY;
+	}
+	if (ballY > canvas.height) {
+		ballReset();
+		triesLeft--;
+		if (triesLeft === 0) {
+			triesLeft = 5;
+			brickReset();
+		}
+	}
+}
+
+function isBrickAtColRow(col, row) {
+	if (col >= 0 &&  col < BRICKCOL &&
+		row >= 0 && row < BRICKROWS) {
+
+		var brickUnderCoord = rowColArrayIndex(col, row);
+		return brickGrid[brickUnderCoord];
+	} else {
+		return false;
+	}
+
+}
+
+function ballBrickHandler() {
+	var ballBrickCol = Math.floor(ballX/BRICKW);
+	var ballBrickRow = Math.floor(ballY/BRICKH);
+	var brickUnderBall = rowColArrayIndex(ballBrickCol, ballBrickRow);
+
+	if (ballBrickCol >= 0 && ballBrickCol < BRICKCOL &&
+		ballBrickRow >= 0 && ballBrickRow < BRICKROWS) {
+		
+		if (isBrickAtColRow(ballBrickCol, ballBrickRow)) {	
+			// ballSpeedY = -ballSpeedY;
+			brickGrid[brickUnderBall] = false;
+			bricksLeft--;
+			
+			var prevBallX = ballX - ballSpeedX;
+			var prevBallY = ballY - ballSpeedY;
+			var prevBrickCol = Math.floor(prevBallX/BRICKW);
+			var prevBrickRow = Math.floor(prevBallY/BRICKH);
+
+			var bothTestsFailed = true;
+
+			if (prevBrickCol != ballBrickCol) {
+				if (isBrickAtColRow(prevBrickCol, ballBrickRow) === false) {
+					ballSpeedX = -ballSpeedX;
+					bothTestsFailed = false;	
+				}
+			}
+			if (prevBrickRow != ballBrickRow) {
+				if (isBrickAtColRow(ballBrickCol, prevBrickRow) === false) {
+					ballSpeedY = -ballSpeedY;
+					bothTestsFailed = false;
+				}	
+			}
+			if (bothTestsFailed) {
+				ballSpeedX = -ballSpeedX;
+				ballSpeedY = -ballSpeedY;
+			}
+		}
+	}	
+}
+
+function ballPaddleHandler() {
+	var paddleTopY = canvas.height - PADDLEEDGE;
+	var paddleBottomY = paddleTopY + PADDLETHICKNESS;
+	var paddleLeft = paddleX;
+	var paddleRight = paddleLeft + PADDLEWIDTH;
+	
+	if (ballY > paddleTopY && 
+		ballY < paddleBottomY && 
+		ballX > paddleLeft && 
+		ballX < paddleRight) {
+
+		ballSpeedY = -ballSpeedY;
+
+		var centerOfPaddleX = paddleX + PADDLEWIDTH/2;
+		var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
+		ballSpeedX = ballDistFromPaddleCenterX * 0.35;
+
+		if (bricksLeft === 0) {
+			brickReset();
+		}
+	}
+}
+
+function moveAll() {
+	moveBall();
+
+	ballBrickHandler();
+
+	ballPaddleHandler();
+}
+
+function rowColArrayIndex(col, row) {
+	return col + BRICKCOL * row;
+}
+
+function drawBricks() {
+	for (var eachRow = 0; eachRow < BRICKROWS; eachRow++) {
+		for (var eachCol = 0; eachCol < BRICKCOL; eachCol++) {
+			
+			var arrayIndex = rowColArrayIndex(eachCol, eachRow);
+			
+			if (brickGrid[arrayIndex]) {
+				colorBox(BRICKW*eachCol, BRICKH*eachRow, BRICKW-BRICKGAP, BRICKH-BRICKGAP, "blue");
+			}
+		}
+	}
+}
+function drawAll() {
+	colorBox(0, 0, canvas.width, canvas.height, "black");
+
+	colorBox(paddleX, canvas.height - PADDLEEDGE, PADDLEWIDTH, PADDLETHICKNESS, "white");
+
+	drawBricks();
+
+	colorArc(ballX, ballY, 10, "white");
+
+	canvasContext.fillText(triesLeft, 100, 500);
+}
+
+function colorBox(topX, topY, boxWidth, boxHeight, fillColor) {
+	canvasContext.fillStyle = fillColor;
+	canvasContext.fillRect(topX, topY, boxWidth, boxHeight);
+}
+function colorArc(centerX, centerY, radius, fillColor) {
+	canvasContext.fillStyle = fillColor;
+	canvasContext.beginPath();
+	canvasContext.arc(centerX, centerY, radius, 0 , Math.PI * 2, true);
+	canvasContext.fill();
+}
+</script>
+</body>
+</html>
