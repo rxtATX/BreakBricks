@@ -7,12 +7,16 @@
 </head>
 <body>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
+<p>Press M to Mute. +/- to Increase/Lower Speed. Space to toggle Pause.</p>
 
 <script>
 var ballX = 75;
 var ballY = 100;
 var ballSpeedX = 5;
 var ballSpeedY = 5;
+var extraFast = false;
+
+const FPS = 30;
 
 const PADDLEWIDTH = 82;
 const PADDLETHICKNESS = 12;
@@ -20,7 +24,7 @@ const PADDLEEDGE = 60;
 
 const BRICKW = 80;
 const BRICKH = 20;
-const BRICKGAP = 2;
+const BRICKGAP = 1;
 const BRICKCOL = 10;
 const BRICKROWS	= 14;
 
@@ -30,30 +34,94 @@ var triesLeft = 5;
 var paddleX = 400;
 var brickGrid = new Array(BRICKCOL * BRICKROWS);
 
+var bounce = new Audio("assets/sound/bounce.wav");
+var breakBrick = new Audio("assets/sound/break.wav");
+var lossSound = new Audio("assets/sound/loss.wav");
+var win = new Audio("assets/sounds/win.wav");
+
+var game;
+var gamePaused = false;
 var canvas, canvasContext;
 window.onload = function() {
 	canvas = document.getElementById("gameCanvas");
 	canvasContext = canvas.getContext("2d");
 
-	var FPS = 30;
-	setInterval(updateAll, 1000/FPS);
+	game = setInterval(updateAll, 1000/FPS);
 	
 	canvas.addEventListener("mousemove", updateMousePos);
 
 	brickReset();
 	ballReset();
+	console.log(ballSpeedX + " default X, " + ballSpeedY + " default Y");
 }
+window.onkeydown = function(e) {
+	var code = e.keyCode ? e.keyCode : e.which;
+
+	if (code === 187 || code === 107) {
+		if (!extraFast) {
+			ballSpeedX = ballSpeedX * 2.5;
+			ballSpeedY = ballSpeedY * 2.5;
+			if (ballSpeedY >  10 || ballSpeedY < -10) {
+				extraFast = true;
+			}
+		} 
+	} else if (code === 189 || code === 109) {
+		extraFast = false;
+		ballSpeedX = ballSpeedX/2;
+		ballSpeedY = ballSpeedY/2;
+	} else if (code === 37) {
+		if ((paddleX + PADDLEWIDTH/4) > 0) {
+			paddleX -= 25;
+		}
+	} else if (code === 39) {
+		if ((paddleX + PADDLEWIDTH/2) < canvas.width) {
+			paddleX += 25;
+		} 
+	}
+	if (code === 38) {
+		bounce.volume += 0.5;
+		breakBrick.volume += 0.5;
+		lossSound.volume += 0.5;
+	} else if (code === 40) {
+		bounce.volume -= 0.5;
+		breakBrick.volume -= 0.5;
+		lossSound.volume -= 0.5;
+	} else if (code === 77) {
+		if (!bounce.muted) {
+			bounce.muted = true;
+			breakBrick.muted = true;
+			lossSound.muted = true
+		} else {
+			bounce.muted = false;
+			breakBrick.muted = false;
+			lossSound.muted = false;
+		}
+	}
+	if (code === 32 || code === 80) {
+		pauseGame();
+	}
+} 
+function pauseGame() {
+	if (gamePaused === false) {
+		game = clearInterval(game);
+		gamePaused = true;
+	} else if (gamePaused === true) {
+		game = setInterval(updateAll, 1000/FPS);
+		gamePaused = false;
+	}
+}
+
 function updateMousePos(evt) {
 	var rect = canvas.getBoundingClientRect();
 	var root = document.documentElement;
 
 	var mouseX = evt.clientX - rect.left - root.scrollLeft;
-	// var mouseY = evt.clientY -rect.left - root.scrollRight;
 
 	paddleX = mouseX - PADDLEWIDTH/2;
 }
 
 function brickReset() {
+	triesLeft = 5;
 	bricksLeft = 0;
 	var i;
 	for (i = 0; i < 3 * BRICKCOL; i++) {
@@ -80,13 +148,16 @@ function moveBall() {
 	if ((ballX < 0 && ballSpeedX < 0.0) || 
 		(ballX > canvas.width && ballSpeedX > 0.0)) {
 		ballSpeedX = -ballSpeedX;
+		bounce.play();
 	}
 	if (ballY < 0 && ballSpeedY < 0.0) {
 		ballSpeedY = -ballSpeedY;
+		bounce.play();
 	}
 	if (ballY > canvas.height) {
 		ballReset();
 		triesLeft--;
+		lossSound.play();
 		if (triesLeft === 0) {
 			triesLeft = 5;
 			brickReset();
@@ -115,7 +186,6 @@ function ballBrickHandler() {
 		ballBrickRow >= 0 && ballBrickRow < BRICKROWS) {
 		
 		if (isBrickAtColRow(ballBrickCol, ballBrickRow)) {	
-			// ballSpeedY = -ballSpeedY;
 			brickGrid[brickUnderBall] = false;
 			bricksLeft--;
 			
@@ -129,18 +199,21 @@ function ballBrickHandler() {
 			if (prevBrickCol != ballBrickCol) {
 				if (isBrickAtColRow(prevBrickCol, ballBrickRow) === false) {
 					ballSpeedX = -ballSpeedX;
-					bothTestsFailed = false;	
+					bothTestsFailed = false;
+					breakBrick.play();	
 				}
 			}
 			if (prevBrickRow != ballBrickRow) {
 				if (isBrickAtColRow(ballBrickCol, prevBrickRow) === false) {
 					ballSpeedY = -ballSpeedY;
 					bothTestsFailed = false;
-				}	
-			}
+					breakBrick.play();
+				}
+			}	
 			if (bothTestsFailed) {
 				ballSpeedX = -ballSpeedX;
 				ballSpeedY = -ballSpeedY;
+				breakBrick.play();
 			}
 		}
 	}	
@@ -162,6 +235,7 @@ function ballPaddleHandler() {
 		var centerOfPaddleX = paddleX + PADDLEWIDTH/2;
 		var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
 		ballSpeedX = ballDistFromPaddleCenterX * 0.35;
+		bounce.play();
 
 		if (bricksLeft === 0) {
 			brickReset();
@@ -202,7 +276,12 @@ function drawAll() {
 
 	colorArc(ballX, ballY, 10, "white");
 
-	canvasContext.fillText(triesLeft, 100, 500);
+	canvasContext.fillText(triesLeft, 100, canvas.height * 4/5);
+
+	if (bricksLeft === 0) {
+		canvasContext.fillText("Congratulations!", canvas.width/2 - 45, canvas.height/2);
+		win.play();
+	}
 }
 
 function colorBox(topX, topY, boxWidth, boxHeight, fillColor) {
