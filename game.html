@@ -6,8 +6,13 @@
 	<title>Breakout Game</title>
 </head>
 <body>
+<style>
+* {
+	cursor:none;
+}
+</style>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
-<p>Press M to Mute. +/- to Increase/Lower Speed. Space to toggle Pause.</p>
+<p>Play with the Mouse. Press M to Mute. +/- to Increase/Lower Speed. Space to toggle Pause.</p>
 
 <script>
 var ballX = 75;
@@ -45,6 +50,7 @@ var canvas, canvasContext;
 window.onload = function() {
 	canvas = document.getElementById("gameCanvas");
 	canvasContext = canvas.getContext("2d");
+
 
 	game = setInterval(updateAll, 1000/FPS);
 	
@@ -225,7 +231,7 @@ function ballPaddleHandler() {
 	var paddleLeft = paddleX;
 	var paddleRight = paddleLeft + PADDLEWIDTH;
 	
-	if (ballY > paddleTopY && 
+	if (ballY + Math.PI * 2 > paddleTopY && 
 		ballY < paddleBottomY && 
 		ballX > paddleLeft && 
 		ballX < paddleRight) {
