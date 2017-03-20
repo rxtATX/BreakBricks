@@ -4,6 +4,9 @@
 	<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 	<meta content="utf-8" http-equiv="encoding">
 	<title>Breakout Game</title>
+		    <!-- linking bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
 </head>
 <body>
 <style>
@@ -11,8 +14,8 @@
 	cursor:none;
 }
 </style>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
-<p>Play with the Mouse. Press M to Mute. +/- to Increase/Lower Speed. Space to toggle Pause.</p>
+<canvas id="gameCanvas" width="1100" height="600"></canvas>
+<p class="text-center">Play with the Mouse. Press M to Mute. +/- to Increase/Lower Speed. Space to toggle Pause.</p>
 
 <script>
 var ballX = 75;
@@ -27,10 +30,10 @@ const PADDLEWIDTH = 82;
 const PADDLETHICKNESS = 12;
 const PADDLEEDGE = 60;
 
-const BRICKW = 80;
+const BRICKW = 79;
 const BRICKH = 20;
 const BRICKGAP = 1;
-const BRICKCOL = 10;
+const BRICKCOL = 14;
 const BRICKROWS	= 14;
 
 var bricksLeft = 0;
